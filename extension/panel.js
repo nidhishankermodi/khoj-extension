@@ -7,9 +7,11 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const VIEW_FIELDS = ['sort', 'onlyMatch', 'hideAcc', 'hideAds', 'showOOS'];
+const RATING_STEPS = [3, 3.5, 4, 4.5];
 let lastRun = null;
 let hiddenSites = new Set();
 let flashKey = null;
+let ratingOverride = null; // { runId, value } — खोज के बाद rating बदली हो तो नतीजे दोबारा खोजे बिना छँटें
 const state = { catId: 'all', catManual: false, catAuto: false };
 
 // ---------- setup ----------
@@ -18,12 +20,22 @@ $('siteChips').innerHTML = SITES.map((s) => `
     <input type="checkbox" name="site" value="${s.id}" checked><span class="dot"></span>${esc(s.name)}
   </label>`).join('');
 
+function renderRatingOptions() {
+  const sel = $('minRating');
+  const keep = sel.value;
+  sel.innerHTML = `<option value="">${esc(t('any'))}</option>` +
+    RATING_STEPS.map((r) => `<option value="${r}">${esc(t('ratingUp', { r }))}</option>`).join('');
+  sel.value = keep;
+}
+renderRatingOptions();
+
 $('lang').innerHTML = LANGS.map((l) => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
 function useLang(id) {
   const keep = readFieldValues();
   setLang(id || DEFAULT_LANG);
   $('lang').value = getLang();
   applyStatic();
+  renderRatingOptions();
   $('catInput').value = t(catById(state.catId).name);
   renderFields(keep);
   markSites();
@@ -202,7 +214,7 @@ function readForm() {
   return {
     desc: $('desc').value, category: state.catId, catManual: state.catManual,
     brand: f.brand, brandText: f.brandText, fields: f.fields,
-    minPrice: $('minPrice').value, maxPrice: $('maxPrice').value
+    minPrice: $('minPrice').value, maxPrice: $('maxPrice').value, minRating: $('minRating').value
   };
 }
 
@@ -212,7 +224,7 @@ async function restore() {
   setLang(lang || DEFAULT_LANG);
   if (form && form.fields) { // v1.2 format
     $('desc').value = form.desc || '';
-    setVal('minPrice', form.minPrice); setVal('maxPrice', form.maxPrice);
+    setVal('minPrice', form.minPrice); setVal('maxPrice', form.maxPrice); setVal('minRating', form.minRating);
     setCategory(form.category || 'all', { manual: !!form.catManual, keepSites: true, values: form });
   } else {
     if (form?.desc) $('desc').value = form.desc;
@@ -221,8 +233,12 @@ async function restore() {
   if (view) VIEW_FIELDS.forEach((f) => f in view && setVal(f, view[f]));
   if (sites) document.querySelectorAll('input[name=site]').forEach((c) => (c.checked = sites.includes(c.value)));
   useLang(getLang());
-  const { lastRun: lr } = await chrome.storage.session.get('lastRun');
-  if (lr) { lastRun = lr; render(); }
+  const { lastRun: lr, ratingOverride: ro } = await chrome.storage.session.get(['lastRun', 'ratingOverride']);
+  if (lr) {
+    lastRun = lr;
+    if (ro?.runId === lr.runId) { ratingOverride = ro; setVal('minRating', ro.value ?? ''); }
+    render();
+  }
 }
 restore();
 
@@ -242,6 +258,7 @@ $('form').addEventListener('submit', async (e) => {
   chrome.storage.local.set({ form, sites: siteIds });
   hiddenSites = new Set();
   flashKey = null;
+  ratingOverride = null;
   await chrome.runtime.sendMessage({ type: 'search', runId: crypto.randomUUID(), query, criteria, siteIds });
 });
 
@@ -255,8 +272,24 @@ VIEW_FIELDS.forEach((f) => $(f).addEventListener('change', () => {
   render();
 }));
 
+// rating filter नतीजों पर तुरंत लगे — दोबारा खोजने की ज़रूरत नहीं
+$('minRating').addEventListener('change', () => {
+  if (!lastRun) return;
+  ratingOverride = { runId: lastRun.runId, value: $('minRating').value ? +$('minRating').value : null };
+  chrome.storage.session.set({ ratingOverride }); // panel और tab दोनों में एक जैसा रहे
+  render();
+});
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'session' && changes.lastRun) { lastRun = changes.lastRun.newValue; render(); }
+  if (area === 'session' && changes.ratingOverride) {
+    const ro = changes.ratingOverride.newValue;
+    if (ro && lastRun && ro.runId === lastRun.runId && ro.value !== ratingOverride?.value) {
+      ratingOverride = ro;
+      setVal('minRating', ro.value ?? '');
+      render();
+    }
+  }
   if (area === 'local' && changes.lang && changes.lang.newValue !== getLang()) useLang(changes.lang.newValue); // panel और tab साथ में बदलें
 });
 
@@ -271,8 +304,9 @@ function flash(key) {
 function render() {
   if (!lastRun || flashKey) return;
   const { query, sites, items, done } = lastRun;
-  const c = { values: {}, features: [], keywords: [], category: 'all', ...lastRun.criteria };
+  const c = { values: {}, features: [], keywords: [], extras: [], category: 'all', ...lastRun.criteria };
   const cat = catById(c.category);
+  const minRating = ratingOverride && ratingOverride.runId === lastRun.runId ? ratingOverride.value : c.minRating;
 
   $('go').disabled = !done;
   $('go').textContent = done ? t('search') : t('searching');
@@ -285,6 +319,8 @@ function render() {
   if (brand) tags.push(brand.name); else if (c.brandText) tags.push(c.brandText);
   for (const f of cat.fields) { const v = c.values[f.id]; if (v != null && v !== '' && v !== false) tags.push(valueLabel(f, v)); }
   c.features.forEach((f) => tags.push(f.toUpperCase()));
+  c.extras.forEach((x) => tags.push(`“${x}”`));
+  if (minRating) tags.push(t('ratingUp', { r: minRating }));
   if (c.minPrice && c.maxPrice) tags.push(`${formatINR(c.minPrice)} – ${formatINR(c.maxPrice)}`);
   else if (c.maxPrice) tags.push(t('priceUpTo', { p: formatINR(c.maxPrice) }));
   else if (c.minPrice) tags.push(t('priceAbove', { p: formatINR(c.minPrice) }));
@@ -313,6 +349,7 @@ function render() {
   $('hideAccWrap').hidden = !hasAccessoryRule(c.category);
   const counts = {};
   let oosHidden = 0;
+  let ratingHidden = 0;
   let list = items.map((it) => ({ ...it, m: matchSpecs(it, c) }))
     .filter((it) => it.price != null || it.oos)
     .filter((it) => it.price == null || !c.minPrice || it.price >= c.minPrice)
@@ -321,6 +358,8 @@ function render() {
     .filter((it) => !(view.hideAcc && isAccessory(it, c)))
     .filter((it) => !(view.hideAds && it.sponsored))
     .filter((it) => !view.onlyMatch || it.m.fails === 0)
+    // बिना रेटिंग वाले भी छुपते हैं (जैसे Amazon/Flipkart का "4★ & up"), पर गिनती दिखाते हैं
+    .filter((it) => { if (minRating && !(it.rating >= minRating)) { ratingHidden++; return false; } return true; })
     .filter((it) => { if (it.oos && !view.showOOS) { oosHidden++; return false; } return true; });
 
   // एक ही product एक साइट पर दो बार आए तो एक रखें
@@ -351,6 +390,7 @@ function render() {
   $('summary').innerHTML = (list.length
     ? t('summary', { n: list.length, p: formatINR(cheapest) }) // translations में सिर्फ़ <b> है, हमारी अपनी string
     : (done ? esc(t('noResults')) : ''))
+    + (ratingHidden ? ` <span class="oosNote">· ${esc(t('ratingHidden', { n: ratingHidden, r: minRating }))}</span>` : '')
     + (oosHidden ? ` <span class="oosNote">· ${esc(t('oosCount', { n: oosHidden }))}</span>` : '');
 
   $('siteFilter').innerHTML = SITES.map((x) => x.id).filter((id) => sites[id]).map((id) => {

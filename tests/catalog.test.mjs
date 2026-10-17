@@ -26,6 +26,12 @@ test('core UI strings exist in English', () => {
   for (const k of ['search', 'showOOS', 'outOfStock', 'catPlaceholder', 'bestDeal']) assert.ok(allKeys().includes(k), k);
 });
 
+test('rating filter strings are translated into every language', () => {
+  for (const l of LANGS) {
+    for (const k of ['minRating', 'ratingUp', 'ratingHidden', 'oAnySize']) assert.ok(langKeys(l.id).includes(k), `${k} missing in ${l.id}`);
+  }
+});
+
 test('categories are well formed', () => {
   const ids = new Set();
   const siteIds = new Set(SITES.map((s) => s.id));
@@ -45,6 +51,13 @@ test('type-ahead suggestions', () => {
   assert.equal(searchCategories('dia')[0].id, 'diapers');
   assert.deepEqual(searchCategories('tool').slice(0, 2).map((c) => c.id), ['power_tools', 'hand_tools']);
   assert.equal(searchCategories('').length, CATEGORIES.length);
+});
+
+test('release bookkeeping: versions agree and the changelog covers this version', () => {
+  const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
+  const { version } = JSON.parse(read('extension/manifest.json'));
+  assert.equal(JSON.parse(read('package.json')).version, version, 'package.json and manifest.json versions differ');
+  assert.match(read('CHANGELOG.md'), new RegExp(`^## \\[${version.replace(/\./g, '\\.')}\\] - \\d{4}-\\d{2}-\\d{2}$`, 'm'), `CHANGELOG.md has no dated section for ${version}`);
 });
 
 test('manifest has a host permission for every store', () => {

@@ -75,6 +75,8 @@ L('fWheel', ['Wheel size', 'पहिये का साइज़', 'चाक�
 L('fFormat', ['Format', 'फ़ॉर्मेट', 'स्वरूप', 'ફોર્મેટ', 'ফরম্যাট', 'வடிவம்', 'ఫార్మాట్', 'ಸ್ವರೂಪ', 'ਫ਼ਾਰਮੈਟ']);
 L('fPet', ['Pet', 'पालतू जानवर', 'पाळीव प्राणी', 'પાળતુ પ્રાણી', 'পোষ্য', 'செல்லப்பிராணி', 'పెంపుడు జంతువు', 'ಸಾಕುಪ್ರಾಣಿ', 'ਪਾਲਤੂ ਜਾਨਵਰ']);
 L('fFunction', ['Functions', 'फ़ंक्शन', 'कार्ये', 'ફંક્શન', 'ফাংশন', 'செயல்பாடுகள்', 'ఫంక్షన్లు', 'ಕಾರ್ಯಗಳು', 'ਫ਼ੰਕਸ਼ਨ']);
+L('fExpandable', ['Expandable storage (microSD)', 'एक्सपैंडेबल स्टोरेज (microSD)', 'वाढवता येणारे स्टोरेज (microSD)', 'વધારી શકાય તેવું સ્ટોરેજ (microSD)', 'বাড়ানো যায় এমন স্টোরেজ (microSD)', 'விரிவாக்கக்கூடிய சேமிப்பு (microSD)', 'విస్తరించగల స్టోరేజ్ (microSD)', 'ವಿಸ್ತರಿಸಬಹುದಾದ ಸ್ಟೋರೇಜ್ (microSD)', 'ਵਧਾਈ ਜਾ ਸਕਣ ਵਾਲੀ ਸਟੋਰੇਜ (microSD)']);
+L('oAnySize', ['Yes, any size', 'हाँ, कोई भी साइज़', 'हो, कोणताही आकार', 'હા, કોઈ પણ સાઇઝ', 'হ্যাঁ, যেকোনো সাইজ', 'ஆம், எந்த அளவும்', 'అవును, ఏ సైజు అయినా', 'ಹೌದು, ಯಾವುದೇ ಗಾತ್ರ', 'ਹਾਂ, ਕੋਈ ਵੀ ਸਾਈਜ਼']);
 
 // option labels जिनका अनुवाद ज़रूरी है
 L('oMen', ['Men', 'पुरुष', 'पुरुष', 'પુરુષ', 'পুরুষ', 'ஆண்கள்', 'పురుషులు', 'ಪುರುಷರು', 'ਮਰਦ']);
@@ -90,6 +92,10 @@ L('oCat', ['Cat', 'बिल्ली', 'मांजर', 'બિલાડી',
 // ---------- reusable fields ----------
 const RAM = (vals = [4, 6, 8, 12, 16]) => min('ram', 'ram', 'ram', vals, (v) => `${v} GB+`, { inQuery: true, q: (v) => `${v}gb ram`, chip: (v) => `${v}GB+ RAM` });
 const STORAGE = (vals, label = 'storage', id = 'storage') => min(id, label, 'storage', vals, (v) => `${gb(v)}+`, { inQuery: true, q: (v) => gb(v).replace(' ', '').toLowerCase() });
+// value 1 = "expandable है, साइज़ कुछ भी"; बाक़ी values = कम से कम इतने GB तक बढ़ सके
+const EXPANDABLE = min('expand', 'fExpandable', 'expandable', [1, 256, 512, 1024, 2048],
+  (v) => (v === 1 ? t('oAnySize') : `${gb(v)}+`),
+  { any: 1, inQuery: true, q: () => 'expandable', chip: (v) => (v === 1 ? 'Expandable' : `Expandable ${gb(v)}+`) });
 const STARS = (vals = [3, 4, 5]) => min('stars', 'fStars', 'stars', vals, (v) => `${v}★+`);
 const LITRES = (vals) => min('capacity', 'fCapacity', 'litre', vals, (v) => `${v} L+`);
 const INVERTER = bool('inverter', 'fInverter', 'inverter|bldc|direct\\s*drive', 'inverter', 'Inverter');
@@ -175,7 +181,7 @@ const RAW = [
     q: 'mobile', syn: ['mobile', 'mobiles', 'phone', 'phones', 'smartphone', 'smart phone', 'iphone', 'cellphone', 'फोन', 'फ़ोन', 'मोबाइल', 'मोबाईल'],
     brands: BR.phones,
     fields: [
-      RAM(), STORAGE([64, 128, 256, 512, 1024]),
+      RAM(), STORAGE([64, 128, 256, 512, 1024]), EXPANDABLE,
       min('camera', 'fCamera', 'mp', [12, 48, 50, 64, 108, 200], (v) => `${v} MP+`),
       min('battery', 'fBattery', 'mah', [4000, 5000, 6000, 7000], (v) => `${v} mAh+`),
       sel('display', 'fDisplay', [['AMOLED / OLED', '(?:super\\s*)?amoled|\\boled\\b|\\bpoled\\b', 'amoled'], ['LCD', '\\blcd\\b|\\bips\\b', 'lcd']], { inQuery: false }),
@@ -189,7 +195,7 @@ const RAW = [
   C('tablets', 'mobiles', ['Tablets', 'टैबलेट', 'टॅबलेट', 'ટેબ્લેટ', 'ট্যাবলেট', 'டேப்லெட்டுகள்', 'టాబ్లెట్లు', 'ಟ್ಯಾಬ್ಲೆಟ್‌ಗಳು', 'ਟੈਬਲੈੱਟ'], {
     q: 'tablet', syn: ['tablet', 'tablets', 'tab', 'ipad', 'टैबलेट'], brands: BR.tablets,
     fields: [
-      RAM([4, 6, 8, 12]), STORAGE([64, 128, 256, 512]),
+      RAM([4, 6, 8, 12]), STORAGE([64, 128, 256, 512]), EXPANDABLE,
       range('screen', 'fScreen', 'inch', [['8"–9"', 7.5, 9.9, '8 inch'], ['10"–11"', 10, 11.4, '11 inch'], ['12"+', 11.5, 20, '12 inch']]),
       sel('conn', 'fConnectivity', [['Wi-Fi + Cellular', 'cellular|\\blte\\b|\\b5g\\b|\\b4g\\b|\\bsim\\b|calling', 'lte'], ['Wi-Fi only', 'wi-?fi\\s*only|wifi\\s*only|\\(\\s*wi-?fi\\s*\\)', 'wifi']])
     ],

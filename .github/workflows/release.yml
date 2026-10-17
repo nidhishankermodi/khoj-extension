@@ -1,6 +1,7 @@
 name: Release
 
-# Push a tag like v1.2.0 → tests run, the extension is zipped, and a GitHub Release is published with the zip attached.
+# Push a tag like v1.1.0 → tests run, the extension is zipped, and a GitHub Release is published
+# with the zip attached. The release text comes from that version's section in CHANGELOG.md.
 on:
   push:
     tags: ['v*']
@@ -24,8 +25,12 @@ jobs:
           fi
       - run: npm test
       - run: npm run zip
+      - name: Release notes from CHANGELOG.md
+        run: node scripts/release-notes.mjs "${GITHUB_REF_NAME#v}" dist/RELEASE_NOTES.md
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
+          name: Khoj ${{ github.ref_name }}
+          body_path: dist/RELEASE_NOTES.md
           files: dist/*.zip
-          generate_release_notes: true
+          generate_release_notes: true # adds the "Full Changelog: vA...vB" compare link below the notes

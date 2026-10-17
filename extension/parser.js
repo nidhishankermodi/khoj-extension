@@ -11,6 +11,8 @@ export const wordRe = (w) => new RegExp(`(^|[^a-z0-9${IND}])${esc(w)}(?=$|[^a-z0
 // ---------- बजट ----------
 const NUM = '(\\d[\\d,]*(?:\\.\\d+)?)';
 const UNIT = '\\s*(k|हजार|हज़ार|thousand|l|lakh|लाख)?(?![a-z])';
+// "up to 1 TB", "under 512 GB", "above 5000 mAh" — ये specs हैं, बजट नहीं
+const NOT_SPEC = '(?!\\s*(?:gb|tb|mb|mah|mp|hz|w|watts?|v|volts?|kgs?|g|gms?|grams?|ml|ltrs?|litres?|liters?|inch(?:es)?|cm|mm|tons?|stars?|★|pcs|rpm)(?![a-z]))';
 const CUR = '(?:₹|rs\\.?|inr|रु\\.?)?\\s*';
 const UPTO = 'तक|के\\s*अंदर|के\\s*अन्दर|से\\s*कम|के\\s*नीचे|tak|ke\\s*andar|se\\s*kam|or less|max|पर्यंत|સુધી|পর্যন্ত|வரை|వరకు|ವರೆಗೆ|ਤੱਕ';
 
@@ -22,8 +24,30 @@ function money(n, unit) {
   return v;
 }
 
+// ---------- expandable storage ----------
+// "Expandable Upto 1 TB", "microSD (up to 512GB)", "1TB expandable", "memory card slot" —
+// यह internal storage नहीं है, इसलिए storage पढ़ने से पहले इसे अलग कर देते हैं।
+const EXP_SRC = [
+  'expandable(?:\\s*(?:storage|memory|upto|up\\s*to|till|max(?:imum)?|of|:|\\(|-))*\\s*(\\d{1,4})\\s*(gb|tb)(?![a-z])',
+  '(?:expandable|micro\\s*-?\\s*sd(?:xc|hc)?|memory\\s*card|sd\\s*card|card\\s*slot)(?:\\s*(?:storage|memory|slot|card|support(?:ed|s)?))*' +
+    '(?:\\s*[:(\\-]?\\s*(?:up\\s*to|upto|till|max(?:imum)?)\\s*(\\d{1,4})\\s*(gb|tb)(?![a-z]))?',
+  '(\\d{1,4})\\s*(gb|tb)\\s*(?:of\\s*)?(?:expandable|micro\\s*-?\\s*sd)(?:\\s*(?:storage|memory|card|slot|support(?:ed)?))*'
+].join('|');
+const EXP_RX = new RegExp(EXP_SRC, 'i');
+const EXP_RX_ALL = new RegExp(EXP_SRC, 'gi');
+
+/** GB में कितना बढ़ सकता है; 1 = expandable है पर साइज़ नहीं लिखा; null = कोई ज़िक्र नहीं */
+function readExpandable(t) {
+  const m = t.match(EXP_RX);
+  if (!m) return null;
+  const n = m[1] ?? m[3] ?? m[5];
+  const u = m[2] ?? m[4] ?? m[6];
+  return n ? +n * (u.toLowerCase() === 'tb' ? 1024 : 1) : 1;
+}
+
 // ---------- extractors: text → number | null ----------
 function readRamStorage(t) {
+  t = t.replace(EXP_RX_ALL, ' ');
   const r = {};
   let m = t.match(/(\d{1,2})\s*gb\s*(?:of\s*)?(?:(?:lp)?ddr\d\w*\s*)?(?:ram|रैम)/i) || t.match(/ram\s*[:\-]?\s*(\d{1,2})\s*gb/i);
   if (m) r.ram = +m[1];
@@ -65,46 +89,121 @@ export const EXTRACT = {
   mp: most(/(\d{1,3})\s*mp\b/gi),
   mah: one(/(\d{4,5})\s*mah/i),
   hz: most(/(\d{2,3})\s*hz\b/gi),
-  stars: one(/([1-5])\s*[-\s]?star/i),
-  count: (t) => { const m = t.match(/pack\s*of\s*(\d{1,4})/i) || t.match(/(\d{1,4})\s*(?:count|pcs|pieces|pants|diapers|wipes|sheets|units|nos)\b/i); return m ? +m[1] : null; }
+  stars: one(/(?<![\d.])([1-5])\s*[-\s]?star/i), // "4.5 star" (ग्राहक रेटिंग) का 5 नहीं
+  count: (t) => { const m = t.match(/pack\s*of\s*(\d{1,4})/i) || t.match(/(\d{1,4})\s*(?:count|pcs|pieces|pants|diapers|wipes|sheets|units|nos)\b/i); return m ? +m[1] : null; },
+  expandable: readExpandable
 };
+
+// ये fields बाक़ी fields से पहले पढ़े जाते हैं और उनका text हटा दिया जाता है
+// (वरना "expandable up to 1 TB" का 1 TB internal storage बन जाता)
+const PRE_STRIP = { expandable: EXP_RX_ALL };
+
+// ---------- ग्राहक रेटिंग: "4 star and above", "rating 4+", "4.5★", "highly rated" ----------
+const R_NUM = '(?<![\\d.])([1-5](?:\\.\\d)?)(?![\\d.])(?!\\s*(?:tons?|kgs?|l|ltrs?|litres?|liters?|gb|tb|inch(?:es)?|w|watts?|hz|mp|mah|k|%)(?![a-z]))';
+const R_UP = '(?:\\s*(?:\\+|(?:&|and|or)\\s*(?:above|up|more|higher|better)|plus|से\\s*ऊपर|से\\s*ज़?्?यादा|या\\s*ज़?्?यादा))?';
+const R_STAR = '\\s*(?:★|stars?(?![a-z])|स्टार)';
+const R_WORD = '(?:ratings?|rated|रेटिंग)(?![a-z])';
+const R_PRE = '(?:\\s*(?:of|above|over|at\\s*least|min(?:imum)?|more\\s*than|>=?))?\\s*';
+const R_WHO = '(?:customer|user|review)\\s*';
+const RATING_RX = [
+  // [regex, energy-star वाली category में भी चले?]
+  [new RegExp(`${R_WHO}${R_WORD}${R_PRE}${R_NUM}(?:${R_STAR})?${R_UP}`, 'i'), true],
+  [new RegExp(`${R_NUM}(?:${R_STAR})?${R_UP}\\s*${R_WHO}${R_WORD}`, 'i'), true],
+  [new RegExp(`${R_NUM}\\s*★${R_UP}|★\\s*${R_NUM}${R_UP}`, 'i'), true],
+  [new RegExp(`${R_WORD}${R_PRE}${R_NUM}(?:${R_STAR})?${R_UP}`, 'i'), false],
+  [new RegExp(`${R_NUM}(?:${R_STAR})?${R_UP}\\s*${R_WORD}`, 'i'), false],
+  [new RegExp(`${R_NUM}${R_STAR}${R_UP}`, 'i'), false]
+];
+const RATING_WORDS_RX = /(?:highly|top|best|well|good|great|high|achh?i|acchi)[\s-]*(?:customer\s*)?(?:rated|ratings?|reviews?|reviewed)(?![a-z])|अच्छी\s*रेटिंग/i;
 
 // keyword बनाते समय ये शब्द नहीं रखते
 const STOP = new Set(('i want need a an the with and or for of in to my me is be should have has good best better great nice cheap ' +
-  'price budget under below upto within around range rs inr ram rom gb tb storage internal memory ssd hdd camera battery ' +
+  'price budget under below upto up within around range rs inr ram rom gb tb storage internal memory ssd hdd camera battery ' +
   'display screen size capacity pack count pcs inch inches cm litre litres liter liters ltr kg kgs ton tons star stars watt watts ' +
-  'chahiye chahie mujhe muje mera meri ka ki ke ko wala wali wale aur bhi hona hai me mein se tak kam ' +
+  'rating ratings rated review reviews customer above over more also only big large small long decent excellent awesome value money quality ' +
+  'chahiye chahie mujhe muje mera meri ka ki ke ko wala wali wale aur bhi hona hai hain me mein se tak kam koi kuch sirf ' +
+  'sasta sasti saste acha accha achha achhi acchi badhiya ' +
   'lena dikhao batao show find search buy new latest please plz approx about for').split(' '));
 const UNIT_TOKEN = /^\d+(?:\.\d+)?(gb|tb|mp|mah|hz|kgs?|l|ltrs?|w|v|inch|cm|ton|star|ml|g|gm|pcs|count|k)$/;
+const KEEP_ALIAS = ['galaxy', 'iphone', 'ipad', 'pixel', 'redmi', 'narzo', 'macbook', 'airpods', 'surface']; // model-family नाम query में रहें
+const BREAK = ' ; '; // हटाए गए हिस्से की जगह — इससे दोनों तरफ़ के शब्द एक phrase नहीं बनते
 
-/** description → { brand, brandText, values{fieldId: value}, minPrice, maxPrice, features[], keywords[] } */
+/** बचे हुए शब्दों के छोटे phrases ("dual sim", "headphone jack") — नतीजों में इन्हें ढूँढकर दिखाते हैं */
+function phrasesFrom(text, skip, usedNums) {
+  const out = [];
+  for (const chunk of text.replace(/[ऀ-෿]+/g, ';').split(/[;,!?|/()[\]{}:\n]|\.(?!\d)/)) {
+    let run = [];
+    const flush = () => {
+      for (let i = 0; i < run.length; i += 4) {
+        const p = run.slice(i, i + 4);
+        if (p.some((w) => /[a-z]/.test(w))) out.push(p.join(' ')); // सिर्फ़ नंबर वाला phrase नहीं
+      }
+      run = [];
+    };
+    for (const raw of chunk.split(/\s+/)) {
+      const w = raw.replace(/^[^a-z0-9]+|[^a-z0-9+]+$/g, '');
+      if (!w) continue;
+      const drop = (w.length < 2 && !/^\d$/.test(w)) || STOP.has(w) || skip.has(w) || UNIT_TOKEN.test(w) ||
+        /^\d{4,}$/.test(w) || /^\d+\.\d+$/.test(w) || usedNums.has(w);
+      if (drop) flush(); else run.push(w);
+    }
+    flush();
+  }
+  return [...new Set(out)];
+}
+
+/** description → { brand, values{fieldId: value}, minPrice, maxPrice, minRating, features[], keywords[], extras[] } */
 export function parseDescription(input, catId) {
   const cat = catById(catId);
   let s = ' ' + (input || '').toLowerCase().replace(/[“”"']/g, ' ') + ' ';
-  const out = { brand: '', values: {}, minPrice: null, maxPrice: null, features: [], keywords: [] };
-  const take = (re, fn) => { s = s.replace(re, (...m) => { fn(m); return ' '; }); };
+  const out = { brand: '', values: {}, minPrice: null, maxPrice: null, minRating: null, features: [], keywords: [], extras: [] };
+  // fn false लौटाए तो text वैसा ही रहता है (जैसे "upto 1 TB" का 1 बजट नहीं है, तो "1 TB" बचा रहे)
+  const take = (re, fn) => { s = s.replace(re, (...m) => (fn(m) === false ? m[0] : BREAK)); };
+  const budget = (v, key) => { if (v < 100) return false; out[key] = v; };
 
   // बजट
-  take(new RegExp(`${CUR}${NUM}${UNIT}\\s*(?:-|–|to|से|ते|થી|থেকে|ਤੋਂ)\\s*${CUR}${NUM}${UNIT}`, 'i'), (m) => {
+  take(new RegExp(`${CUR}${NUM}${UNIT}\\s*(?:-|–|to|से|ते|થી|থেকে|ਤੋਂ)\\s*${CUR}${NUM}${UNIT}${NOT_SPEC}`, 'i'), (m) => {
     const u2 = m[4]; const a = money(m[1], m[2] || u2), b = money(m[3], u2);
-    if (a >= 100 && b >= 100 && b > a) { out.minPrice = a; out.maxPrice = b; }
+    if (!(a >= 100 && b >= 100 && b > a)) return false;
+    out.minPrice = a; out.maxPrice = b;
   });
-  if (out.maxPrice == null) take(new RegExp(`(?:under|below|less than|upto|up to|within|max(?:imum)?|budget(?:\\s+(?:is|of))?|बजट(?:\\s+है)?)\\s*${CUR}${NUM}${UNIT}`, 'i'),
-    (m) => { const v = money(m[1], m[2]); if (v >= 100) out.maxPrice = v; });
-  if (out.maxPrice == null) take(new RegExp(`${CUR}${NUM}${UNIT}\\s*(?:rs|rupees|रुपये|रुपए|रु)?\\s*(?:${UPTO})`, 'i'),
-    (m) => { const v = money(m[1], m[2]); if (v >= 100) out.maxPrice = v; });
-  take(new RegExp(`(?:above|over|more than|min(?:imum)?|starting)\\s*${CUR}${NUM}${UNIT}`, 'i'),
-    (m) => { const v = money(m[1], m[2]); if (v >= 100) out.minPrice = v; });
-  take(new RegExp(`${CUR}${NUM}${UNIT}\\s*(?:से\\s*ज़?्?या?दा|से\\s*ऊपर|के\\s*ऊपर|se\\s*upar|se\\s*zyada)`, 'i'),
-    (m) => { const v = money(m[1], m[2]); if (v >= 100) out.minPrice = v; });
-  if (out.maxPrice == null) take(/(?:₹|rs\.?\s*)\s*(\d[\d,]{2,})|(?:^|\s)(\d{2,3})\s*k(?=\s)/i  /* 4k/8k = resolution, बजट नहीं */, (m) => {
-    const v = m[1] ? money(m[1]) : money(m[2], 'k'); if (v >= 100) out.maxPrice = v;
-  });
+  if (out.maxPrice == null) take(new RegExp(`(?:under|below|less than|upto|up to|within|max(?:imum)?|budget(?:\\s+(?:is|of))?|बजट(?:\\s+है)?)\\s*${CUR}${NUM}${UNIT}${NOT_SPEC}`, 'i'),
+    (m) => budget(money(m[1], m[2]), 'maxPrice'));
+  if (out.maxPrice == null) take(new RegExp(`${CUR}${NUM}${UNIT}${NOT_SPEC}\\s*(?:rs|rupees|रुपये|रुपए|रु)?\\s*(?:${UPTO})`, 'i'),
+    (m) => budget(money(m[1], m[2]), 'maxPrice'));
+  take(new RegExp(`(?:above|over|more than|min(?:imum)?|starting)\\s*${CUR}${NUM}${UNIT}${NOT_SPEC}`, 'i'),
+    (m) => budget(money(m[1], m[2]), 'minPrice'));
+  take(new RegExp(`${CUR}${NUM}${UNIT}${NOT_SPEC}\\s*(?:से\\s*ज़?्?या?दा|से\\s*ऊपर|के\\s*ऊपर|se\\s*upar|se\\s*zyada)`, 'i'),
+    (m) => budget(money(m[1], m[2]), 'minPrice'));
+  if (out.maxPrice == null) take(/(?:₹|rs\.?\s*)\s*(\d[\d,]{2,})|(?:^|\s)(\d{2,3})\s*k(?=\s)/i  /* 4k/8k = resolution, बजट नहीं */,
+    (m) => budget(m[1] ? money(m[1]) : money(m[2], 'k'), 'maxPrice'));
+
+  // ग्राहक रेटिंग — fridge/AC/washer में "3 star" एनर्जी रेटिंग है, इसलिए वहाँ सिर्फ़ साफ़ लिखी रेटिंग पकड़ें
+  const energy = cat.fields.some((f) => f.extract === 'stars');
+  for (const [re, always] of RATING_RX) {
+    let found = false;
+    take(re, (m) => {
+      if (!always && energy && !m[1].includes('.')) return false;
+      out.minRating = +m[1];
+      found = true;
+    });
+    if (found) break;
+  }
+  if (out.minRating == null && RATING_WORDS_RX.test(s)) out.minRating = 4;
+  s = s.replace(RATING_WORDS_RX, BREAK);
 
   // category के fields
   const usedNums = new Set(); // "300 litres" का 300 keyword न बने
+  for (const f of cat.fields) {
+    const rx = PRE_STRIP[f.extract];
+    if (!rx) continue;
+    const v = EXTRACT[f.extract](s);
+    if (v != null) { out.values[f.id] = v; s = s.replace(rx, BREAK); }
+  }
+  const fieldRx = []; // select/bool जो मिले — उनके शब्द query में रहें, पर "extras" में दोबारा न दिखें
   const numFirst = [...cat.fields].sort((a, b) => (/min|range/.test(b.type) ? 1 : 0) - (/min|range/.test(a.type) ? 1 : 0));
   for (const f of numFirst) {
+    if (PRE_STRIP[f.extract]) continue;
     if (f.type === 'min') {
       const v = EXTRACT[f.extract](s);
       if (v != null && v > 0) { out.values[f.id] = v; usedNums.add(String(v)); }
@@ -114,12 +213,12 @@ export function parseDescription(input, catId) {
       if (op) { out.values[f.id] = op.v; usedNums.add(String(v)); }
     } else if (f.type === 'select') {
       const op = f.options.find((o) => o.rx.test(s));
-      if (op) out.values[f.id] = op.v; // user के शब्द keywords में रहते हैं ("basmati rice")
+      if (op) { out.values[f.id] = op.v; fieldRx.push(op.rx); } // user के शब्द keywords में रहते हैं ("basmati rice")
     } else if (f.type === 'bool') {
-      if (f.rx.test(s)) out.values[f.id] = true;
+      if (f.rx.test(s)) { out.values[f.id] = true; fieldRx.push(f.rx); }
     }
   }
-  for (const w of cat.featureWords || []) if (wordRe(w).test(s)) { out.features.push(w); s = s.replace(wordRe(w), ' '); }
+  for (const w of cat.featureWords || []) if (wordRe(w).test(s)) { out.features.push(w); s = s.replace(wordRe(w), BREAK); }
 
   // ब्रांड
   for (const b of cat.brands) {
@@ -127,10 +226,16 @@ export function parseDescription(input, catId) {
       if (a.length < 2 || a === 'mi') continue; // "mi" जैसे शब्द description से नहीं पकड़ते (LG, HP, Vu ठीक हैं)
       if (wordRe(a).test(s)) {
         if (!out.brand) out.brand = b.id;
-        if (!['galaxy', 'iphone', 'ipad', 'pixel', 'redmi', 'narzo', 'macbook', 'airpods', 'surface'].includes(a)) s = s.replace(wordRe(a), ' ');
+        if (!KEEP_ALIAS.includes(a)) s = s.replace(wordRe(a), BREAK);
       }
     }
   }
+
+  // बाक़ी जो लिखा है ("dual sim", "headphone jack") — नतीजों में ढूँढकर ✓ / ? दिखाते हैं।
+  // product के नाम ("phone", "mobile") छोड़ देते हैं, वो तो हर नतीजे में होंगे।
+  const skip = new Set([...cat.synWords, ...(cat.q || '').split(' ')].filter((w) => w && !KEEP_ALIAS.includes(w)));
+  const rest = fieldRx.reduce((t, rx) => t.replace(new RegExp(rx.source, 'gi'), BREAK), s);
+  out.extras = phrasesFrom(rest, skip, usedNums).slice(0, 4);
 
   // बचे हुए काम के शब्द (model नाम, product noun…)
   out.keywords = s
@@ -155,8 +260,10 @@ export function mergeCriteria(parsed, form) {
     values,
     minPrice: form.minPrice ? +form.minPrice : parsed.minPrice,
     maxPrice: form.maxPrice ? +form.maxPrice : parsed.maxPrice,
+    minRating: form.minRating ? +form.minRating : (parsed.minRating ?? null),
     features: parsed.features,
-    keywords: parsed.keywords
+    keywords: parsed.keywords,
+    extras: parsed.extras || []
   };
 }
 
@@ -175,6 +282,7 @@ export function buildQuery(c) {
   if (brand) parts.push(brand.name.startsWith('Apple') ? (brand.alias[1] || 'apple') : brand.alias[0]);
   else if (c.brandText) parts.push(c.brandText.toLowerCase());
   parts.push(...c.keywords);
+  parts.push(...(c.features || [])); // "wireless charging", "ip68" भी साइट्स पर खोजे जाएँ
   for (const f of cat.fields) parts.push(fieldTerm(f, c.values?.[f.id]));
 
   // शब्द दोहराए न जाएँ
@@ -206,8 +314,10 @@ export function matchSpecs(item, c) {
     if (v == null || v === '' || v === false) continue;
     const label = valueLabel(f, v);
     if (f.type === 'min' || f.type === 'range') {
-      const x = EXTRACT[f.extract](title) ?? EXTRACT[f.extract](item.text || '');
-      if (x == null) { checks.push({ label, ok: false, unknown: true }); continue; }
+      // title में न हो (या सिर्फ़ "expandable" लिखा हो, साइज़ नहीं) तो card का बाक़ी text देखें
+      let x = EXTRACT[f.extract](title);
+      if (x == null || (f.any != null && x === f.any)) x = EXTRACT[f.extract](item.text || '') ?? x;
+      if (x == null || (f.any != null && x === f.any && v !== f.any)) { checks.push({ label, ok: false, unknown: true }); continue; }
       if (f.type === 'min') checks.push({ label, ok: x >= v - 1e-6 });
       else { const op = f.options.find((o) => o.v === v); checks.push({ label, ok: !!op && x >= op.lo && x <= op.hi }); }
     } else if (f.type === 'select') {
@@ -224,6 +334,11 @@ export function matchSpecs(item, c) {
   for (const w of c.features || []) {
     const ok = wordRe(w).test(hay);
     checks.push({ label: w.toUpperCase(), ok, unknown: !ok });
+  }
+  // description के बाक़ी शब्द: सब मिले तो ✓, वरना ? (title में न लिखा होना "नहीं है" का सबूत नहीं)
+  for (const p of c.extras || []) {
+    const ok = p.split(' ').every((w) => wordRe(w).test(hay));
+    checks.push({ label: p, ok, unknown: !ok });
   }
   const score = checks.length ? checks.filter((x) => x.ok).length / checks.length : 1;
   const fails = checks.filter((x) => !x.ok && !x.unknown).length;

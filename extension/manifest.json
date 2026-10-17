@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Khoj – Price Aggregator",
   "short_name": "Khoj",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Describe what you need once — compare prices across Amazon, Flipkart, JioMart, Croma and Reliance Digital in 55 categories.",
   "minimum_chrome_version": "116",
   "homepage_url": "https://github.com/nidhishankermodi/khoj-extension",

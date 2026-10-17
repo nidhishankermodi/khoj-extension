@@ -18,7 +18,7 @@ Khoj uses Chrome's built-in extension storage to remember:
 |---|---|---|
 | Your last description, category and filters | `chrome.storage.local` | So the form is filled in next time |
 | Your language and view preferences (sort order, toggles) | `chrome.storage.local` | So your choices persist |
-| Results of your latest search | `chrome.storage.session` | So results survive closing and reopening the panel. Cleared when the browser closes |
+| Results of your latest search, and any customer-rating filter you changed after it | `chrome.storage.session` | So results survive closing and reopening the panel. Cleared when the browser closes |
 
 This data never leaves your computer. Removing the extension deletes it.
 

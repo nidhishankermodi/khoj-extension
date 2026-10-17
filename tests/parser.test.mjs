@@ -77,6 +77,60 @@ test('spec matching: ✓ / ✕ / ?', () => {
   assert.ok(bad.checks.find((x) => x.label === 'Inverter').unknown);
 });
 
+const badges = (item, criteria) =>
+  Object.fromEntries(matchSpecs(item, criteria).checks.map((x) => [x.label, x.ok ? '✓' : x.unknown ? '?' : '✕']));
+
+test('expandable storage is its own filter, not internal storage or a budget', () => {
+  for (const text of ['mobile with expandable memory upto 1 TB', 'mobile with expandable memory up to 1TB']) {
+    const r = understand(text);
+    assert.deepEqual(r.parsed.values, { expand: 1024 }, text);
+    assert.equal(r.parsed.maxPrice, null, text);
+    assert.match(r.query, /expandable/, text);
+  }
+  assert.equal(understand('phone with memory card slot').parsed.values.expand, 1);
+  assert.equal(parseDescription('phone expandable up to 512 GB', 'mobiles').maxPrice, null);
+
+  const c = understand('phone with 256gb storage, expandable up to 1TB').criteria;
+  assert.deepEqual(badges({ title: 'Galaxy M35 5G (8GB RAM, 128GB) | Expandable up to 1TB' }, c), { '256 GB+': '✕', 'Expandable 1 TB+': '✓' });
+  assert.deepEqual(badges({ title: 'Redmi 13C (4GB RAM, 256GB)', text: '4 GB RAM | 256 GB ROM | Expandable Upto 512 GB' }, c), { '256 GB+': '✓', 'Expandable 1 TB+': '✕' });
+  assert.deepEqual(badges({ title: 'Apple iPhone 15 (256 GB)' }, c), { '256 GB+': '✓', 'Expandable 1 TB+': '?' });
+});
+
+test('customer rating from the description', () => {
+  const rating = (text) => parseDescription(text, detectCategory(text) || 'all').minRating;
+  assert.equal(rating('phone with good rating 4 star and above'), 4);
+  assert.equal(rating('phone rating 4.5+'), 4.5);
+  assert.equal(rating('earbuds 4+ rated'), 4);
+  assert.equal(rating('highly rated earbuds'), 4);
+  assert.equal(rating('phone under 20000'), null);
+
+  // fridges, ACs and washing machines: a plain "3 star" is the energy rating
+  const f = parseDescription('LG fridge 3 star inverter', 'fridges');
+  assert.equal(f.minRating, null);
+  assert.equal(f.values.stars, 3);
+  const g = parseDescription('samsung fridge 4 star, customer rating 4.2 and above', 'fridges');
+  assert.equal(g.minRating, 4.2);
+  assert.equal(g.values.stars, 4);
+
+  // the rating dropdown wins over the description
+  const parsed = parseDescription('phone 4 star and above', 'mobiles');
+  assert.equal(mergeCriteria(parsed, { category: 'mobiles', minRating: '4.5' }).minRating, 4.5);
+  assert.equal(mergeCriteria(parsed, { category: 'mobiles', minRating: '' }).minRating, 4);
+});
+
+test('everything in the description reaches the search and the result badges', () => {
+  const r = understand('oneplus phone with wireless charging and ip68, dual sim, headphone jack');
+  assert.match(r.query, /wireless charging/);
+  assert.match(r.query, /ip68/);
+  assert.deepEqual(r.parsed.extras, ['dual sim', 'headphone jack']);
+  assert.deepEqual(badges({ title: 'OnePlus 13R 5G (Dual SIM, IP68)' }, r.criteria),
+    { 'WIRELESS CHARGING': '?', IP68: '✓', 'dual sim': '✓', 'headphone jack': '?' });
+
+  assert.deepEqual(understand('iphone 15 pro 256gb').parsed.extras, ['iphone 15 pro']);
+  // words a filter already understood aren't repeated
+  assert.deepEqual(understand('LG double door fridge 300 litres 3 star inverter').parsed.extras, []);
+});
+
 test('accessories are filtered per category', () => {
   const c = { category: 'mobiles' };
   assert.equal(isAccessory({ title: 'Spigen Back Cover for Galaxy M35', price: 799 }, c), true);

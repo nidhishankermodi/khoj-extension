@@ -8,7 +8,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
 ![Manifest V3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white)
-![Version](https://img.shields.io/badge/version-1.2.0-blue)
+[![Latest release](https://img.shields.io/github/v/release/nidhishankermodi/khoj-extension?label=release&color=blue)](https://github.com/nidhishankermodi/khoj-extension/releases/latest)
 ![Languages](https://img.shields.io/badge/UI-9%20languages-2B8A3E)
 [![Tests](https://github.com/nidhishankermodi/khoj-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/nidhishankermodi/khoj-extension/actions/workflows/ci.yml)
 
@@ -34,11 +34,11 @@ It runs entirely in your browser. No server, no account, no tracking.
 
 - 🗣️ **Plain-language search.** Write it the way you'd say it, in English, Hinglish or an Indian language. Khoj picks out the brand, budget and specs: `15k-25k`, `20000 तक`, `8/256`, `300 litres 3 star`, `1.5 ton split`, `XL 50 pcs`.
 - 🛒 **5 stores at once.** Amazon.in, Flipkart, JioMart, Croma and Reliance Digital.
-- 🗂️ **55 categories in 14 groups, 138 smart filters.** Each category gets its own fields:
+- 🗂️ **55 categories in 14 groups, 140 smart filters.** Each category gets its own fields:
 
   | Category | Its filters |
   |---|---|
-  | Mobiles | RAM, storage, camera MP, battery mAh, AMOLED/LCD, refresh rate, 5G |
+  | Mobiles | RAM, storage, expandable storage (microSD), camera MP, battery mAh, AMOLED/LCD, refresh rate, 5G |
   | Laptops | Processor, RAM, SSD, screen size, gaming / thin & light, OS, dedicated GPU |
   | Refrigerators | Capacity (L), door type, star rating, inverter |
   | Power tools | Tool type, corded/cordless, battery voltage, wattage |
@@ -46,8 +46,9 @@ It runs entirely in your browser. No server, no account, no tracking.
   | …and 50 more | TVs, ACs, washing machines, footwear, grocery, toys, pet food… |
 
 - 🔎 **Category type-ahead.** Type `mob`, `fri`, `dia` or `tool` to jump to that category. Khoj also detects the category from your description, and unticks stores that don't sell it.
+- ⭐ **Customer rating filter.** Show only items rated 3★, 3.5★, 4★ or 4.5★ and up. Changing it updates the current results straight away, without searching again. Khoj also picks it up from your description: `4 star and above`, `rating 4.5+`, `highly rated`.
 - ↕️ **Sort & filter.** Sort by price (either way), best match, rating or biggest discount. You can show only items that match your specs, hide sponsored items and accessories (no phone covers in your phone search), and show or hide out-of-stock items.
-- ✅ **Spec badges.** `✓` matched, `✕` doesn't match, `?` not mentioned in the title. **Best deal** marks the cheapest in-stock item that meets all your specs.
+- ✅ **Spec badges.** `✓` matched, `✕` doesn't match, `?` not mentioned. Anything else you write, like `dual sim`, `headphone jack` or a model name, is searched for and gets its own badge too. **Best deal** marks the cheapest in-stock item that meets all your specs.
 - 🌐 **9 languages.** English (default), हिन्दी, मराठी, ગુજરાતી, বাংলা, தமிழ், తెలుగు, ಕನ್ನಡ, ਪੰਜਾਬੀ.
 - 🌙 **Light & dark mode**, following your system setting.
 - 💾 **Picks up where you left off.** Your last description, filters, language and view settings are remembered, and the latest results survive closing and reopening the panel.
@@ -55,13 +56,27 @@ It runs entirely in your browser. No server, no account, no tracking.
 
 ## Screenshots
 
-| Results | Category type-ahead | Category-specific filters |
+| Results, 4★ & up | Your words, checked on every result | Phone filters |
 |:---:|:---:|:---:|
-| <img src="docs/screenshots/results.png" width="260" alt="Results sorted by price"> | <img src="docs/screenshots/category-search.png" width="260" alt="Typing 'wa' suggests Washing machines and more"> | <img src="docs/screenshots/category-filters.png" width="260" alt="Refrigerator filters: capacity, door type, star rating, inverter"> |
-| **Dark mode** | **हिन्दी UI** | |
-| <img src="docs/screenshots/results-dark.png" width="260" alt="Dark mode"> | <img src="docs/screenshots/hindi.png" width="260" alt="Hindi interface"> | |
+| <img src="docs/screenshots/results.png" width="260" alt="Results sorted by price with spec badges; 2 items rated below 4 stars are hidden"> | <img src="docs/screenshots/description-match.png" width="260" alt="Description 'expandable up to 1TB, dual sim, rating 4+' understood as filters, with a badge for each on every result"> | <img src="docs/screenshots/mobile-filters.png" width="260" alt="Mobile phone filters including Expandable storage (microSD) and Customer rating"> |
+| **Category type-ahead** | **Category-specific filters** | **Dark mode** |
+| <img src="docs/screenshots/category-search.png" width="260" alt="Typing 'wa' suggests Washing machines and more"> | <img src="docs/screenshots/category-filters.png" width="260" alt="Refrigerator filters: capacity, door type, energy rating, inverter, customer rating"> | <img src="docs/screenshots/results-dark.png" width="260" alt="Results in dark mode"> |
+| **हिन्दी UI** | | |
+| <img src="docs/screenshots/hindi.png" width="260" alt="Hindi interface with refrigerator filters"> | | |
+
+<sub>Screenshots show sample results. The prices and ratings in them are for illustration only.</sub>
 
 ## Install
+
+### Option A: From a release (easiest)
+
+1. Download `khoj-extension-vX.Y.Z.zip` from the [**latest release**](https://github.com/nidhishankermodi/khoj-extension/releases/latest) and unzip it.
+2. Open `chrome://extensions` (Edge: `edge://extensions`, Brave: `brave://extensions`).
+3. Turn on **Developer mode** (top-right).
+4. Click **Load unpacked** and select the unzipped folder (the one containing `manifest.json`).
+5. Pin Khoj from the 🧩 puzzle menu. Clicking the icon opens it in the side panel.
+
+### Option B: From source
 
 ```bash
 git clone https://github.com/nidhishankermodi/khoj-extension.git
@@ -71,11 +86,21 @@ Then follow steps 2–5 above and select the **`extension/`** folder.
 
 > Works in Chrome 116+ and other Chromium browsers that support the Side Panel API (Edge, Brave, Opera, Arc). Firefox and Safari are not supported yet.
 
+### Updating to a new version
+
+Unpacked extensions don't update by themselves. Your saved settings are kept as long as you update the folder in place rather than removing the extension.
+
+- **Installed from a release:** download the new zip, unzip it over your old Khoj folder (replacing the files), then click 🔄 **Reload** on Khoj's card in `chrome://extensions`.
+- **Installed from source:** run `git pull` in your clone, then click 🔄 **Reload**.
+
+Check the version on Khoj's card in `chrome://extensions`. [CHANGELOG.md](CHANGELOG.md) lists what changed in each version.
+
 ## How to use
 
 1. **Pick a category.** Type a few letters, or just skip it and Khoj will detect it from your description.
 2. **Describe what you want.** Some examples:
    - `oneplus nord under 30000`
+   - `samsung phone, expandable up to 1 TB, dual sim, rating 4+`
    - `mujhe 8/256 wala phone chahiye 15k-25k, amoled 120hz`
    - `dell laptop i5 16gb ram 512gb ssd under 70000`
    - `LG double door fridge 300 litres 3 star inverter`
@@ -100,13 +125,14 @@ flowchart LR
 
 - Khoj opens each store's normal **public search page** in a minimised background window, exactly as if you had typed the search yourself. Once the page has loaded, it reads the product cards, then closes the tab.
 - The extractor doesn't rely on CSS class names, which change often. Instead it finds **product links**, climbs to the card that contains exactly one product, and reads the `₹` prices, the struck-through MRP, the rating and stock status. Amazon also has a fast path that uses its stable `data-asin` attributes.
-- Spec matching is done on the result titles, which is why some badges show `?` (for example, when the title doesn't mention the star rating).
+- Spec matching reads each result's title and the short spec line on its card. When neither mentions a spec, the badge shows `?` (for example, when a fridge's title doesn't mention its star rating).
 
 ## Known limitations
 
 - **Stores change their HTML.** When one does, that store may return "Nothing found" until the extractor is updated. Please [open an issue](https://github.com/nidhishankermodi/khoj-extension/issues/new?template=site-broken.yml) with the store and your search.
 - **Captchas.** If a store shows a robot check, Khoj tells you and gives you a link to open the page and verify. Then search again.
-- **Title-based matching.** Specs that aren't in the product title can't be verified from the search page (shown as `?`).
+- **Search-page matching.** Specs that aren't in the product title or card can't be verified from the search page (shown as `?`).
+- **Unrated items and the rating filter.** Items without a rating are hidden while a rating filter is on, and the result count says how many. Some stores don't show ratings on their search pages at all.
 - **Prices are a snapshot.** They're read at the moment you search. Always confirm on the store before buying, including bank offers and delivery charges, which Khoj doesn't include.
 - **First-page results only**, up to 40 per store.
 
@@ -125,7 +151,9 @@ khoj-extension/
 │   ├── panel.html/css/js Side-panel UI
 │   └── icons/
 ├── tests/                Unit tests for the parser & category catalog (node --test)
-├── scripts/zip.mjs       Packs extension/ into dist/khoj-extension-v<version>.zip
+├── scripts/
+│   ├── zip.mjs           Packs extension/ into dist/khoj-extension-v<version>.zip
+│   └── release-notes.mjs Builds the GitHub Release text from CHANGELOG.md
 ├── docs/screenshots/
 ├── .github/              CI, release automation, issue templates
 ├── CHANGELOG.md
@@ -146,14 +174,23 @@ npm run zip       # builds dist/khoj-extension-v<version>.zip (uses the system z
 
 After editing files in `extension/`, click the 🔄 reload icon on `chrome://extensions` to pick up the changes.
 
-**Releasing.** Bump `version` in `extension/manifest.json` and `package.json`, add an entry to [CHANGELOG.md](CHANGELOG.md), then push a tag that matches the manifest version:
+### Releasing
+
+1. Set the same new `version` in `extension/manifest.json` and `package.json`. The tests fail if they differ.
+2. In [CHANGELOG.md](CHANGELOG.md), rename **Unreleased** to `## [X.Y.Z] - YYYY-MM-DD` and update the links at the bottom.
+3. Merge to `main`, then tag that commit and push the tag:
+
+   ```bash
+   git checkout main && git pull
+   git tag -a vX.Y.Z -m "Khoj vX.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+The release workflow then checks that the tag matches the manifest, runs the tests and builds the zip. It publishes a GitHub Release with the zip attached, using that version's CHANGELOG section as the release notes. To preview the notes locally:
 
 ```bash
-git tag v1.2.0
-git push origin v1.2.0
+node scripts/release-notes.mjs X.Y.Z
 ```
-
-The release workflow checks that the tag matches the manifest, runs the tests, builds the zip and publishes a GitHub Release with the zip attached.
 
 ## Contributing
 

@@ -5,8 +5,8 @@ Thanks for helping! This guide covers the most common kinds of contribution. The
 ## Setup
 
 ```bash
-git clone https://github.com/nidhishankermodi/khoj.git
-cd khoj
+git clone https://github.com/nidhishankermodi/khoj-extension.git
+cd khoj-extension
 npm test          # runs the unit tests (Node 20+; no npm install needed)
 ```
 
