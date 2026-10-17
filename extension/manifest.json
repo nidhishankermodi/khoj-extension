@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Khoj – Price Aggregator",
+  "short_name": "Khoj",
+  "version": "1.0.0",
+  "description": "Describe what you need once — compare prices across Amazon, Flipkart, JioMart, Croma and Reliance Digital in 55 categories.",
+  "minimum_chrome_version": "116",
+  "homepage_url": "https://github.com/nidhishankermodi/khoj-extension",
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.amazon.in/*",
+    "https://www.flipkart.com/*",
+    "https://www.jiomart.com/*",
+    "https://www.croma.com/*",
+    "https://www.reliancedigital.in/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Khoj खोलें",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

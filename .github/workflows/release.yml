@@ -1,0 +1,31 @@
+name: Release
+
+# Push a tag like v1.2.0 → tests run, the extension is zipped, and a GitHub Release is published with the zip attached.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tag must match manifest version
+        run: |
+          V=$(node -p "require('./extension/manifest.json').version")
+          if [ "v$V" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match manifest version v$V"; exit 1
+          fi
+      - run: npm test
+      - run: npm run zip
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true

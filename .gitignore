@@ -1,0 +1,15 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# build output
+dist/
+*.zip
+*.crx
+*.pem
+
+# node (no dependencies today, but just in case)
+node_modules/

@@ -1,0 +1,21 @@
+name: 🐞 Bug report
+description: Something else isn't working as expected.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: description
+    attributes:
+      label: Your description and category (if relevant)
+      placeholder: '"LG double door fridge 300L" in Refrigerators'
+  - type: input
+    id: version
+    attributes:
+      label: Khoj version, browser and UI language
+      placeholder: Khoj 1.2.0, Chrome 130, Hindi

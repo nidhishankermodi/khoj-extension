@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Khoj</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img src="icons/icon48.png" alt="" width="28" height="28">
+      <div>
+        <h1 data-i18n="appName">Khoj</h1>
+        <p data-i18n="tagline"></p>
+      </div>
+    </div>
+    <div class="topRight">
+      <label class="langPick" data-i18n-title="language">
+        <span aria-hidden="true">🌐</span>
+        <select id="lang" data-i18n-aria="language"></select>
+      </label>
+      <button id="openTab" class="ghost small iconBtn" data-i18n-title="openTabTitle" data-i18n-aria="openTabTitle">⤢</button>
+    </div>
+  </header>
+
+  <form id="form" autocomplete="off">
+    <div class="field">
+      <label for="catInput" data-i18n="category"></label>
+      <div class="combo">
+        <input id="catInput" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="catList" data-i18n-placeholder="catPlaceholder" spellcheck="false">
+        <span class="comboCaret" aria-hidden="true">▾</span>
+        <ul id="catList" class="catList" role="listbox" hidden></ul>
+      </div>
+      <small id="catNote" class="catNote" hidden></small>
+    </div>
+
+    <label class="field">
+      <span><span data-i18n="descLabel"></span> <em data-i18n="descHint"></em></span>
+      <textarea id="desc" rows="3" data-i18n-placeholder="descPlaceholder"></textarea>
+    </label>
+
+    <details id="more" open>
+      <summary><span data-i18n="filters"></span> <small data-i18n="filtersHint"></small></summary>
+      <div class="grid" id="dynFields"></div>
+      <div class="grid">
+        <label class="field"><span data-i18n="budgetFrom"></span>
+          <input id="minPrice" type="number" min="0" step="500" inputmode="numeric" placeholder="0">
+        </label>
+        <label class="field"><span data-i18n="budgetTo"></span>
+          <input id="maxPrice" type="number" min="0" step="500" inputmode="numeric" data-i18n-placeholder="noLimit">
+        </label>
+      </div>
+      <div class="checks" id="dynChecks"></div>
+    </details>
+
+    <div class="sites" id="siteChips" data-i18n-aria="sitesAria"></div>
+
+    <div class="actions">
+      <button type="submit" id="go" class="primary" data-i18n="search"></button>
+      <button type="button" id="stop" class="ghost" data-i18n="stop" hidden></button>
+    </div>
+    <div id="understood" class="understood" hidden></div>
+  </form>
+
+  <section id="progress" class="progress" hidden></section>
+
+  <section id="resultsWrap" hidden>
+    <div class="toolbar">
+      <div id="summary" class="summary"></div>
+      <label class="sort"><span data-i18n="sortLabel"></span>
+        <select id="sort">
+          <option value="price-asc" data-i18n="sortPriceAsc"></option>
+          <option value="price-desc" data-i18n="sortPriceDesc"></option>
+          <option value="match" data-i18n="sortMatch"></option>
+          <option value="rating" data-i18n="sortRating"></option>
+          <option value="discount" data-i18n="sortDiscount"></option>
+        </select>
+      </label>
+    </div>
+    <div class="toggles">
+      <label class="check"><input type="checkbox" id="onlyMatch"> <span data-i18n="onlyMatch"></span></label>
+      <label class="check" id="hideAccWrap"><input type="checkbox" id="hideAcc" checked> <span data-i18n="hideAcc"></span></label>
+      <label class="check"><input type="checkbox" id="hideAds"> <span data-i18n="hideAds"></span></label>
+      <label class="check"><input type="checkbox" id="showOOS"> <span data-i18n="showOOS"></span></label>
+    </div>
+    <div class="siteFilter" id="siteFilter"></div>
+    <ol id="results" class="results"></ol>
+    <p id="empty" class="emptyState" hidden></p>
+  </section>
+
+  <footer class="foot" data-i18n="footer"></footer>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

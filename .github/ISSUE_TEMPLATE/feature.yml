@@ -1,0 +1,18 @@
+name: 💡 Feature or category request
+description: Suggest a store, category, filter, language or feature.
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of request?
+      options: [New store, New category, New filter for a category, Language / translation, Other feature]
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Describe it
+      description: For a filter, list the options you'd expect (e.g. "Door type: single, double, side-by-side").
+    validations:
+      required: true

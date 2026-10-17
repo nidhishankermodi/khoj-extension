@@ -1,0 +1,41 @@
+name: 🔧 A store isn't returning results
+description: A store shows "Nothing found", wrong prices, or wrong titles.
+labels: [site-broken]
+body:
+  - type: dropdown
+    id: store
+    attributes:
+      label: Which store?
+      options: [Amazon, Flipkart, JioMart, Croma, Reliance Digital]
+    validations:
+      required: true
+  - type: input
+    id: query
+    attributes:
+      label: What did you search for?
+      description: Copy the "Searched stores for" text from the panel, or your description.
+      placeholder: samsung 5g 8gb ram 128gb mobile
+    validations:
+      required: true
+  - type: dropdown
+    id: symptom
+    attributes:
+      label: What went wrong?
+      options:
+        - '"Nothing found", but the store has results'
+        - Prices are wrong or missing
+        - Titles are wrong
+        - Out-of-stock items are shown as in stock (or vice versa)
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details / screenshot
+      description: A screenshot of the store's own search page helps a lot.
+  - type: input
+    id: version
+    attributes:
+      label: Khoj version and browser
+      placeholder: Khoj 1.2.0, Chrome 130
